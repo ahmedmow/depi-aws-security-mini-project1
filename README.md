@@ -153,119 +153,142 @@ Administrative access is performed through AWS Systems Manager Session Manager i
 
 The design uses VPC endpoints so private EC2 instances can communicate with required AWS services without requiring a NAT Gateway or Internet route.
 
-## 🌐 3. Network Design
+<div align="center">
 
-Application VPC
+# 🌐 3. Network Design
 
-The main application network is:
+<p>
+  <img src="https://img.shields.io/badge/VPC-Application%20%26%20Tools-FF9900?style=for-the-badge&logo=amazon-aws&logoColor=white" alt="AWS VPC">
+  <img src="https://img.shields.io/badge/Routing-Public%20%26%20Private-232F3E?style=for-the-badge" alt="Routing">
+  <img src="https://img.shields.io/badge/Connectivity-VPC%20Peering-0052CC?style=for-the-badge" alt="VPC Peering">
+</p>
 
-VPC| CIDR
-"depi-sec-app-vpc"| "10.0.0.0/16"
+</div>
 
-The VPC uses:
+---
 
-- Region: "us-east-1"
-- Availability Zones: "us-east-1a", "us-east-1b"
-- DNS hostnames: Enabled
-- DNS support: Enabled
+## 🏢 Application VPC
 
-Subnet Design
+The main application network architecture:
 
-Subnet| CIDR| Availability Zone| Type
-"depi-sec-public-a"| "10.0.1.0/24"| "us-east-1a"| Public
-"depi-sec-public-b"| "10.0.2.0/24"| "us-east-1b"| Public
-"depi-sec-private-a"| "10.0.11.0/24"| "us-east-1a"| Private
-"depi-sec-private-b"| "10.0.12.0/24"| "us-east-1b"| Private
-"depi-sec-tools-a"| "10.1.1.0/24"| "us-east-1a"| Private — Tools VPC
+| Property | Value |
+| :--- | :--- |
+| **VPC Name** | `depi-sec-app-vpc` |
+| **CIDR Block** | `10.0.0.0/16` |
+| **AWS Region** | `us-east-1` |
+| **Availability Zones** | `us-east-1a`, `us-east-1b` |
+| **DNS Hostnames** | `Enabled` |
+| **DNS Support** | `Enabled` |
 
-Public and Private Routing
+---
 
-A subnet is public because its route table has a route to an Internet Gateway.
+## 🗺️ Subnet Design
 
-The public route table contains:
+<details open>
+<summary><b>📌 Subnet Allocation Table</b></summary>
+<br>
 
-Destination| Target
-"10.0.0.0/16"| Local
-"0.0.0.0/0"| Internet Gateway
+| Subnet Name | CIDR Block | Availability Zone | Subnet Type |
+| :--- | :--- | :--- | :--- |
+| `depi-sec-public-a` | `10.0.1.0/24` | `us-east-1a` | 🌐 **Public** |
+| `depi-sec-public-b` | `10.0.2.0/24` | `us-east-1b` | 🌐 **Public** |
+| `depi-sec-private-a` | `10.0.11.0/24` | `us-east-1a` | 🔒 **Private** |
+| `depi-sec-private-b` | `10.0.12.0/24` | `us-east-1b` | 🔒 **Private** |
+| `depi-sec-tools-a` | `10.1.1.0/24` | `us-east-1a` | 🛠️ **Private (Tools VPC)** |
 
-Both public subnets are associated with this route table.
+</details>
 
-The private route table has no Internet route:
+---
 
-Destination| Target
-"10.0.0.0/16"| Local
+## 🛣️ Public and Private Routing
 
-Both private application subnets are associated with the private route table.
+A subnet is defined as **Public** when its route table contains an explicit route to an **Internet Gateway (IGW)**.
 
-Private subnets use:
+### 1. Public Route Table
+Associated with both public subnets (`depi-sec-public-a` & `depi-sec-public-b`):
 
-map_public_ip_on_launch = false
+| Destination | Target | Description |
+| :--- | :--- | :--- |
+| `10.0.0.0/16` | `Local` | Internal VPC traffic |
+| `0.0.0.0/0` | `Internet Gateway` | Outbound/Inbound Internet access |
 
-Tools VPC
+### 2. Private Route Table
+Associated with both private subnets (`depi-sec-private-a` & `depi-sec-private-b`):
 
-A second VPC is used for the monitoring server:
+| Destination | Target | Description |
+| :--- | :--- | :--- |
+| `10.0.0.0/16` | `Local` | Strictly isolated internal traffic |
 
-VPC| CIDR
-"depi-sec-tools-vpc"| "10.1.0.0/16"
+> 🔒 **Security Provision:** Private subnets explicitly enforce:
+> ```hcl
+> map_public_ip_on_launch = false
+> ```
 
-Its subnet is:
+---
 
-Subnet| CIDR| Availability Zone| Type
-"depi-sec-tools-a"| "10.1.1.0/24"| "us-east-1a"| Private
+## 🛠️ Tools VPC
 
-The Tools VPC CIDR does not overlap with the Application VPC.
+A dedicated secondary VPC is deployed for monitoring and utility workloads:
 
-VPC Peering
+| Property | Value |
+| :--- | :--- |
+| **VPC Name** | `depi-sec-tools-vpc` |
+| **CIDR Block** | `10.1.0.0/16` |
+| **Subnet Name** | `depi-sec-tools-a` (`10.1.1.0/24`) |
+| **Type & AZ** | Private — `us-east-1a` |
 
-The two VPCs communicate through a VPC Peering connection.
+> 💡 **Note:** The Tools VPC CIDR is strictly non-overlapping with the Application VPC to prevent routing conflicts.
 
-Application VPC route:
+---
 
-Destination| Target
-"10.1.0.0/16"| VPC Peering Connection
+## 🔗 VPC Peering
 
-Tools VPC route:
+Private inter-VPC communication is established using an AWS **VPC Peering** connection:
 
-Destination| Target
-"10.0.0.0/16"| VPC Peering Connection
+<div align="center">
 
-Both routes are required for communication.
+| Route Table | Destination | Target |
+| :--- | :--- | :--- |
+| **Application VPC Route** | `10.1.0.0/16` | `VPC Peering Connection` |
+| **Tools VPC Route** | `10.0.0.0/16` | `VPC Peering Connection` |
 
-Network Traffic Flow
+</div>
 
+> ⚡ **Requirement:** Both routes are mandatory to ensure bidirectional traffic flow.
+
+---
+
+## 🔀 Network Traffic Flow Diagram
+
+```text
                          Internet
-                            |
-                            v
+                            │
+                            ▼
                        CloudFront
-                            |
-                            v
+                            │
+                            ▼
                  Application Load Balancer
-                            |
-                            v
-                +-------------------------+
-                |     Private EC2         |
-                |                         |
-                |  Server A    Server B   |
-                +-------------------------+
-                     |             |
-                     v             v
-                   RDS             EFS
+                            │
+                            ▼
+                ┌─────────────────────────┐
+                │     Private EC2         │
+                │                         │
+                │  Server A    Server B   │
+                └───────────┬─────────────┘
+                            │
+                     ┌──────┴──────┐
+                     ▼             ▼
+                    RDS           EFS
 
 
               Tools VPC
             10.1.0.0/16
-                  |
-                  | VPC Peering
-                  |
-                  v
+                  │
+                  │ VPC Peering
+                  │
+                  ▼
           Application VPC
            10.0.0.0/16
-
-The public subnets are used for the internet-facing Application Load Balancer.
-
-The EC2 servers, RDS database, and EFS file system are placed in the private subnets.
-
----
 
 4. Security Controls
 
