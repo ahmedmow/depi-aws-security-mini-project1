@@ -7,6 +7,7 @@ provider "aws" {
       Owner       = "Ahmed_Mowafy"
       Environment = "lab"
       ManagedBy   = "terraform"
+
     }
   }
 }
