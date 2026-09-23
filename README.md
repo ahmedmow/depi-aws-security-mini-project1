@@ -1,5 +1,4 @@
-أكيد. ده الـREADME كامل في Code Block واحد، ومظبط الـMarkdown والـHTML والـtables والـdiagrams بحيث لما تنسخه في README.md يظهر بتنسيق صحيح على GitHub.
-مهم: انسخ كل ما بين الـ4 backticks كما هو إلى README.md. الـ3 backticks الموجودة داخله خاصة بالـdiagrams والأوامر.
+
 <div align="center">
 
 # 🔐 Mini Project 1 — Secure AWS Web Platform
