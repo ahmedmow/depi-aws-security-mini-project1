@@ -32,6 +32,7 @@ This project is a complete, secure AWS web platform built for a small company us
 
 ---
 
+
 ## 9. Cost Notes
 
 - The majority of resources fall under the AWS Free Tier.
@@ -51,7 +52,7 @@ To ensure no ongoing charges remain after completing evaluation:
    aws s3 rm s3://depi-sec-logs-<suffix> --recursive
 
 2. Tear down all infrastructure via Terraform:
-   terraform destroy -var="alert_email=your-email" -auto-approve
+   terraform destroy -var="alert_email=your-email@example.com" -auto-approve
 
 3. Verify via AWS Console that all instances, databases, and load balancers are removed.
 
