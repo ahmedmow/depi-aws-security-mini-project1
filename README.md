@@ -60,7 +60,7 @@ The project combines networking, IAM, storage, compute, monitoring, logging, aut
 
 ### High-Level Architecture
 
-```text
+
                          ┌──────────────────────┐
                          │      Internet        │
                          │       Users          │
